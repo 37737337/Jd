@@ -7,10 +7,10 @@ from aiogram.types import Message, BotCommand, ChatMemberUpdated
 from aiogram.filters import Command
 from aiogram.filters.command import CommandObject
 
-TOKEN = os.getenv("8211838214:AAHmfcsxfbpaUOb32dnTB_JPysI8MoLz-Ko")
+TOKEN = os.getenv("BOT_TOKEN")
 
 if not TOKEN:
-    raise ValueError("BOT_TOKEN не найден в переменных окружения")
+    raise ValueError("BOT_TOKE не найден в переменных окружения")
 
 # 🔒 Разрешённые группы
 ALLOWED_CHATS = {
