@@ -6,7 +6,7 @@ from aiogram.types import Message, BotCommand
 from aiogram.filters import Command
 from aiogram.filters.command import CommandObject
 
-TOKEN = "fidas"
+TOKEN = "8211838214:AAHmfcsxfbpaUOb32dnTB_JPysI8MoLz-Ko"
 
 logging.basicConfig(level=logging.INFO)
 
