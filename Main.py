@@ -1,24 +1,31 @@
 import asyncio
 import logging
 import time
+import os
 from aiogram import Bot, Dispatcher
-from aiogram.types import Message, BotCommand
+from aiogram.types import Message, BotCommand, ChatMemberUpdated
 from aiogram.filters import Command
 from aiogram.filters.command import CommandObject
 
-TOKEN = "8211838214:AAHmfcsxfbpaUOb32dnTB_JPysI8MoLz-Ko"
+TOKEN = os.getenv("8211838214:AAHmfcsxfbpaUOb32dnTB_JPysI8MoLz-Ko")
+
+if not TOKEN:
+    raise ValueError("BOT_TOKEN не найден в переменных окружения")
+
+# 🔒 Разрешённые группы
+ALLOWED_CHATS = {
+    -1001234567890,  # вставь свой ID
+}
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# антиспам (1 раз в минуту на чат)
 last_used = {}
 COOLDOWN = 60
 
 
-# регистрация команды
 async def set_commands():
     commands = [
         BotCommand(command="tag", description="Позвать администраторов"),
@@ -26,7 +33,6 @@ async def set_commands():
     await bot.set_my_commands(commands)
 
 
-# автоудаление сообщений
 async def delete_message_later(msg: Message, delay: int):
     await asyncio.sleep(delay)
     try:
@@ -35,13 +41,22 @@ async def delete_message_later(msg: Message, delay: int):
         pass
 
 
+@dp.my_chat_member()
+async def check_group(event: ChatMemberUpdated):
+    if event.chat.type in ["group", "supergroup"]:
+        if event.chat.id not in ALLOWED_CHATS:
+            await bot.leave_chat(event.chat.id)
+
+
 @dp.message(Command("tag"))
 async def tag_admins(message: Message, command: CommandObject):
 
     if message.chat.type not in ["group", "supergroup"]:
         return
 
-    # ⏳ антиспам
+    if message.chat.id not in ALLOWED_CHATS:
+        return
+
     current_time = time.time()
 
     if message.chat.id in last_used:
@@ -63,7 +78,6 @@ async def tag_admins(message: Message, command: CommandObject):
 
     for admin in admins:
         user = admin.user
-
         if user.is_bot:
             continue
 
@@ -73,9 +87,6 @@ async def tag_admins(message: Message, command: CommandObject):
             mentions.append(
                 f'<a href="tg://user?id={user.id}">{user.full_name}</a>'
             )
-
-    if not mentions:
-        return
 
     chunk_size = 5
 
@@ -89,8 +100,6 @@ async def tag_admins(message: Message, command: CommandObject):
             text += f"\n\n{custom_text}"
 
         sent_message = await message.answer(text, parse_mode="HTML")
-
-        # автоудаление через 5 минут
         asyncio.create_task(delete_message_later(sent_message, 300))
 
 
