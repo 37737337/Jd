@@ -14,7 +14,7 @@ if not TOKEN:
 
 # 🔒 Разрешённые группы
 ALLOWED_CHATS = {
-    -3717142350,  # вставь свой ID
+    -1003717142350,  # вставь свой ID
 }
 
 logging.basicConfig(level=logging.INFO)
