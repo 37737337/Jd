@@ -94,7 +94,7 @@ async def tag_admins(message: Message, command: CommandObject):
     for i in range(0, len(mentions), chunk_size):
         chunk = mentions[i:i + chunk_size]
 
-        text = "📢 Вызов администраторов:\n\n"
+        text = "📢!:\n\n"
         text += "\n".join(chunk)
 
         if custom_text:
