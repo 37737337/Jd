@@ -33,13 +33,13 @@ USER_COOLDOWN = 300   # 5 минут
 GROUP_COOLDOWN = 60   # 1 минута
 
 # ⏰ Время работы
-WORK_START = 9
-WORK_END = 23
+WORK_START = 8
+WORK_END = 22
 
 
 async def set_commands():
     commands = [
-        BotCommand(command="tag", description="Позвать администраторов"),
+        BotCommand(command="tag", description="/tag текст"),
     ]
     await bot.set_my_commands(commands)
 
@@ -73,7 +73,7 @@ async def tag_admins(message: Message, command: CommandObject):
     current_hour = datetime.now(ZoneInfo("Europe/Moscow")).hour
 
     if not (WORK_START <= current_hour < WORK_END):
-        await message.answer("🌙 Команда работает только с 07:00 до 23:00 (МСК).")
+        await message.answer("🌙 Команда работает только с 08:00 до 22:00 (МСК).")
         return
 
     user_id = message.from_user.id
@@ -127,7 +127,7 @@ async def tag_admins(message: Message, command: CommandObject):
     for i in range(0, len(mentions), chunk_size):
         chunk = mentions[i:i + chunk_size]
 
-        text = "📢 Вызов администраторов:\n\n"
+        text = "📢!:\n\n"
         text += "\n".join(chunk)
 
         if custom_text:
