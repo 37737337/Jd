@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 import os
+from datetime import datetime
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message, BotCommand, ChatMemberUpdated
 from aiogram.filters import Command
@@ -10,12 +11,12 @@ from aiogram.filters.command import CommandObject
 TOKEN = os.getenv("BOT_TOKEN")
 
 if not TOKEN:
-    raise ValueError("BOT_TOKE не найден в переменных окружения")
+    raise ValueError("BOT_TOKEN не найден в переменных окружения")
 
 # 🔒 Разрешённые группы
 ALLOWED_CHATS = {
-    -1003717142350,   # вставь свой ID
-    -1003022066500,   # вставь свой ID
+    -1003717142350,
+    -1003022066500,
 }
 
 logging.basicConfig(level=logging.INFO)
@@ -23,8 +24,16 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-last_used = {}
-COOLDOWN = 60
+# ⏳ Антиспам
+user_last_used = {}
+group_last_used = {}
+
+USER_COOLDOWN = 300   # 5 минут
+GROUP_COOLDOWN = 60   # 1 минута
+
+# ⏰ Время работы
+WORK_START = 7
+WORK_END = 23
 
 
 async def set_commands():
@@ -42,6 +51,7 @@ async def delete_message_later(msg: Message, delay: int):
         pass
 
 
+# 🔥 Выход из чужих групп
 @dp.my_chat_member()
 async def check_group(event: ChatMemberUpdated):
     if event.chat.type in ["group", "supergroup"]:
@@ -58,22 +68,42 @@ async def tag_admins(message: Message, command: CommandObject):
     if message.chat.id not in ALLOWED_CHATS:
         return
 
+    # ⏰ Проверка времени
+    current_hour = datetime.now().hour
+    if not (WORK_START <= current_hour < WORK_END):
+        await message.answer("🌙 Команда работает только с 07:00 до 23:00.")
+        return
+
+    user_id = message.from_user.id
+    chat_id = message.chat.id
     current_time = time.time()
 
-    if message.chat.id in last_used:
-        elapsed = current_time - last_used[message.chat.id]
-        if elapsed < COOLDOWN:
-            remaining = int(COOLDOWN - elapsed)
+    # КД группы
+    if chat_id in group_last_used:
+        elapsed_group = current_time - group_last_used[chat_id]
+        if elapsed_group < GROUP_COOLDOWN:
+            remaining = int(GROUP_COOLDOWN - elapsed_group)
             await message.answer(
-                f"⏳ Команду можно использовать через {remaining} сек."
+                f"⏳ В группе можно использовать команду через {remaining} сек."
             )
             return
 
-    last_used[message.chat.id] = current_time
+    # КД пользователя
+    if user_id in user_last_used:
+        elapsed_user = current_time - user_last_used[user_id]
+        if elapsed_user < USER_COOLDOWN:
+            remaining = int(USER_COOLDOWN - elapsed_user)
+            await message.answer(
+                f"⏳ Вы сможете использовать команду через {remaining} сек."
+            )
+            return
+
+    group_last_used[chat_id] = current_time
+    user_last_used[user_id] = current_time
 
     custom_text = command.args if command.args else ""
 
-    admins = await bot.get_chat_administrators(message.chat.id)
+    admins = await bot.get_chat_administrators(chat_id)
 
     mentions = []
 
@@ -94,13 +124,14 @@ async def tag_admins(message: Message, command: CommandObject):
     for i in range(0, len(mentions), chunk_size):
         chunk = mentions[i:i + chunk_size]
 
-        text = "📢!:\n\n"
+        text = "📢 Вызов администраторов:\n\n"
         text += "\n".join(chunk)
 
         if custom_text:
             text += f"\n\n{custom_text}"
 
         sent_message = await message.answer(text, parse_mode="HTML")
+
         asyncio.create_task(delete_message_later(sent_message, 300))
 
 
