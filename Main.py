@@ -12,9 +12,8 @@ from aiogram.filters.command import CommandObject
 TOKEN = os.getenv("BOT_TOKEN")
 
 if not TOKEN:
-    raise ValueError("BOT_TOKEN не найден в переменных окружения")
+    raise ValueError("BOT_TOKEN не найден")
 
-# 🔒 Разрешённые группы
 ALLOWED_CHATS = {
     -1003717142350,
     -1003022066500,
@@ -25,23 +24,22 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# ⏳ Антиспам
 user_last_used = {}
 group_last_used = {}
 
-USER_COOLDOWN = 300   # 5 минут
-GROUP_COOLDOWN = 60   # 1 минута
+USER_COOLDOWN = 300
+GROUP_COOLDOWN = 60
 
-# ⏰ Время работы
 WORK_START = 8
 WORK_END = 22
 
 
-async def set_commands():
-    commands = [
-        BotCommand(command="tag", description="/tag текст"),
-    ]
-    await bot.set_my_commands(commands)
+def format_time(seconds):
+    minutes = seconds // 60
+    seconds = seconds % 60
+    if minutes > 0:
+        return f"{minutes} мин {seconds} сек"
+    return f"{seconds} сек"
 
 
 async def delete_message_later(msg: Message, delay: int):
@@ -52,7 +50,13 @@ async def delete_message_later(msg: Message, delay: int):
         pass
 
 
-# 🔥 Если бота добавят в чужую группу — он выйдет
+async def set_commands():
+    commands = [
+        BotCommand(command="tag", description="/tag текст"),
+    ]
+    await bot.set_my_commands(commands)
+
+
 @dp.my_chat_member()
 async def check_group(event: ChatMemberUpdated):
     if event.chat.type in ["group", "supergroup"]:
@@ -69,11 +73,14 @@ async def tag_admins(message: Message, command: CommandObject):
     if message.chat.id not in ALLOWED_CHATS:
         return
 
-    # ⏰ Московское время
+    # удаляем команду /tag через 30 секунд
+    asyncio.create_task(delete_message_later(message, 30))
+
     current_hour = datetime.now(ZoneInfo("Europe/Moscow")).hour
 
     if not (WORK_START <= current_hour < WORK_END):
-        await message.answer("🌙 Команда работает только с 08:00 до 22:00 (МСК).")
+        msg = await message.answer("🌙 Команда работает только с 08:00 до 22:00 (МСК).")
+        asyncio.create_task(delete_message_later(msg, 30))
         return
 
     user_id = message.from_user.id
@@ -85,9 +92,11 @@ async def tag_admins(message: Message, command: CommandObject):
         elapsed_group = current_time - group_last_used[chat_id]
         if elapsed_group < GROUP_COOLDOWN:
             remaining = int(GROUP_COOLDOWN - elapsed_group)
-            await message.answer(
-                f"⏳ В группе можно использовать команду через {remaining} сек."
+            msg = await message.answer(
+                f"⏳ Команда недавно использовалась.\n"
+                f"Повторить можно через {format_time(remaining)}."
             )
+            asyncio.create_task(delete_message_later(msg, 30))
             return
 
     # КД пользователя
@@ -95,9 +104,11 @@ async def tag_admins(message: Message, command: CommandObject):
         elapsed_user = current_time - user_last_used[user_id]
         if elapsed_user < USER_COOLDOWN:
             remaining = int(USER_COOLDOWN - elapsed_user)
-            await message.answer(
-                f"⏳ Вы сможете использовать команду через {remaining} сек."
+            msg = await message.answer(
+                f"⏳ У вас личный кулдаун.\n"
+                f"Попробуйте снова через {format_time(remaining)}."
             )
+            asyncio.create_task(delete_message_later(msg, 30))
             return
 
     group_last_used[chat_id] = current_time
@@ -135,6 +146,7 @@ async def tag_admins(message: Message, command: CommandObject):
 
         sent_message = await message.answer(text, parse_mode="HTML")
 
+        # удаляем тег через 5 минут
         asyncio.create_task(delete_message_later(sent_message, 300))
 
 
