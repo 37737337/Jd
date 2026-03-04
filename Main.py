@@ -33,7 +33,7 @@ USER_COOLDOWN = 300   # 5 минут
 GROUP_COOLDOWN = 60   # 1 минута
 
 # ⏰ Время работы
-WORK_START = 7
+WORK_START = 10
 WORK_END = 23
 
 
