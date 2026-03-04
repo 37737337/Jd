@@ -3,6 +3,7 @@ import logging
 import time
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message, BotCommand, ChatMemberUpdated
 from aiogram.filters import Command
@@ -51,7 +52,7 @@ async def delete_message_later(msg: Message, delay: int):
         pass
 
 
-# 🔥 Выход из чужих групп
+# 🔥 Если бота добавят в чужую группу — он выйдет
 @dp.my_chat_member()
 async def check_group(event: ChatMemberUpdated):
     if event.chat.type in ["group", "supergroup"]:
@@ -68,10 +69,11 @@ async def tag_admins(message: Message, command: CommandObject):
     if message.chat.id not in ALLOWED_CHATS:
         return
 
-    # ⏰ Проверка времени
-    current_hour = datetime.now().hour
+    # ⏰ Московское время
+    current_hour = datetime.now(ZoneInfo("Europe/Moscow")).hour
+
     if not (WORK_START <= current_hour < WORK_END):
-        await message.answer("🌙 Команда работает только с 07:00 до 23:00.")
+        await message.answer("🌙 Команда работает только с 07:00 до 23:00 (МСК).")
         return
 
     user_id = message.from_user.id
@@ -109,6 +111,7 @@ async def tag_admins(message: Message, command: CommandObject):
 
     for admin in admins:
         user = admin.user
+
         if user.is_bot:
             continue
 
