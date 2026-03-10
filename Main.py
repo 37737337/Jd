@@ -17,6 +17,7 @@ if not TOKEN:
 ALLOWED_CHATS = {
     -1003717142350,
     -1003022066500,
+    -1003241021362,
 }
 
 logging.basicConfig(level=logging.INFO)
